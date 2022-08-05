@@ -14,7 +14,8 @@ alias ka='kubectl get pods'
 alias kall='kubectl get pods --all-namespaces'
 alias kwall='watch kubectl get pods --all-namespaces'
 alias kp="$openCmd 'http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/' & kubectl proxy"
-
+alias _inline_fzf="fzf --multi --ansi -i -1 --height=50% --reverse -0 --header-lines=1 --inline-info --border"
+alias _inline_fzf_nh="fzf --multi --ansi -i -1 --height=50% --reverse -0 --inline-info --border"
 function _isClusterSpaceObject --argument obj
     # caller is responsible for assuring non-empty "$1"
     kubectl api-resources --namespaced=false \
@@ -180,14 +181,20 @@ end
 # }
 
 # [kex] execute command in container from cluster, usage: kex CMD [ARGS]
-function kex --argument cmd
-    set -q cmd[1]; and printf "kex: missing argument(s).\nUsage kex CMD [ARGS]"
-    return 255
-    # local arg_pair=$(kubectl get po --all-namespaces | _inline_fzf | awk '{print $1, $2}')
-    # [ -z "$arg_pair" ] && printf "kex: no pods found. no execution.\n" && return
-    # local containers_out=$(echo "$arg_pair" | xargs kubectl get po -o=jsonpath='{.spec.containers[*].name}' -n)
-    # local container_choosen=$(echo "$containers_out" |  tr ' ' "\n" | _inline_fzf_nh)
-    # _kctl_tty exec -it -n ${arg_pair} -c "${container_choosen}" -- "$@"
+function kex --argument-names cmd
+    if set -q $cmd[1]
+        printf "kex: missing argument(s).\nUsage kex CMD [ARGS]"
+        return 255
+    end
+    # we have to split here, otherwise kubectl interprets this as one argument
+    set -l arg_pair $(kubectl get po --all-namespaces | _inline_fzf | awk '{print $1, $2}' | string split ' ')
+    if set -q $arg_pair
+        printf "key: no pods found. No execution.\n"
+        return 255
+    end
+    set -l containers_out $(echo "$arg_pair" | xargs kubectl get po -o=jsonpath='{.spec.containers[*].name} ' -n)
+    set -l container_choosen $(echo "$containers_out" | tr ' ' "\n" | _inline_fzf_nh)
+    kubectl exec -it -n "$arg_pair[1]" $arg_pair[2] -c "$container_choosen[1]" -- "$cmd[1..]"
 end
 
 # # [kforn] port-forward a container port from current namesapce, usage: kforn LOCAL_PORT:CONTAINER_PORT
