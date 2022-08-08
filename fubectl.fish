@@ -229,14 +229,20 @@ end
 #     done
 # }
 
-# # [kcl] context list
-# alias kcl='kubectl config get-contexts'
+# [kcl] context list
+alias kcl='kubectl config get-contexts'
 
-# # [kcs] context set
 # kcs() {
 #     local context="$(kubectl config get-contexts | _inline_fzf | cut -b4- | awk '{print $1}')"
 #     kubectl config set current-context "${context}"
 # }
+# [kcs] context set
+function kcs
+    set -l context (kubectl config get-contexts | _inline_fzf | cut -b4- | awk '{print $1}')
+    kubectl config set current-context $context
+end
+
+
 
 # # [kcns] context set default namespace
 # kcns() {
