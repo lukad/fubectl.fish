@@ -197,7 +197,13 @@ function kex --argument-names cmd
     kubectl exec -it -n "$arg_pair[1]" $arg_pair[2] -c "$container_choosen[1]" -- "$cmd[1..]"
 end
 
-# # [kforn] port-forward a container port from current namesapce, usage: kforn LOCAL_PORT:CONTAINER_PORT
+# [kforn] port-forward a container port from current namesapce, usage: kforn LOCAL_PORT:CONTAINER_PORT
+# function kforn --argument-names ports
+#     set -l port $ports[1]
+#     breakpoint
+#     set -l arg_pair $(kubectl get po | _inline_fzf | awk '{print $1, $2}')
+#     kubectl port-forward -n $arg_pair $port
+# end
 # kforn() {
 #     local port="$1"
 #     [ -z "$port" ] && printf "kforn: missing argument.\nUsage: kforn LOCAL_PORT:CONTAINER_PORT\n" && return 255
@@ -206,7 +212,20 @@ end
 #     _kctl_tty port-forward -n $arg_pair "$port"
 # }
 
-# # [kfor] port-forward a container port from cluster, usage: kfor LOCAL_PORT:CONTAINER_PORT
+# [kfor] port-forward a container port from cluster, usage: kfor LOCAL_PORT:CONTAINER_PORT
+function kfor --argument-names port
+    if test -z $port[1]
+        printf "kfor: missing argument.\nUsage: kfor LOCAL_PORT:CONTAINER_PORT\nAlso see kubectl port-forward --help"
+        return 255
+    end
+    set -l arg_pair (kubectl get po --all-namespaces | _inline_fzf | awk '{print $1,$2}' | string split ' ')
+    if test -z $arg_pair[1]
+        printf "kfor: no pods found. No forwarding\n"
+        return 255
+    end
+    kubectl port-forward -n $arg_pair[1] $arg_pair[2] $port[1]
+end
+
 # kfor() {
 #     local port="$1"
 #     [ -z "$port" ] && printf "kfor: missing argument.\nUsage: kfor LOCAL_PORT:CONTAINER_PORT\n" && return 255
